@@ -1,0 +1,8 @@
+# Compilar
+
+make
+
+# Executar
+
+./jogo
+
