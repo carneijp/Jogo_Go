@@ -68,7 +68,7 @@ var posX, posY int
 var ultimoElementoSobPersonagem = vazio
 var statusMsg string
 
-var efeitoNeblina = true
+var efeitoNeblina = false
 var revelado [][]bool
 var raioVisao int = 3
 
