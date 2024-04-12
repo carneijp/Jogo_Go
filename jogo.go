@@ -78,6 +78,13 @@ var clockDor = Elemento{
     tangivel: false,
 }
 
+var jackPot = Elemento{
+    simbolo: '💸',
+    cor: termbox.ColorYellow,
+    corFundo: termbox.ColorDefault,
+    tangivel: false,
+}
+
 // Mapaa parece ser a variavel que representa uma matriz de elementos
 var mapa [][]Elemento
 // Entender o que esses posX, posY fazem
@@ -89,6 +96,7 @@ var statusMsg string
 
 // Define se vai aparecer a neblina
 var efeitoNeblina = false
+
 // matriz de mesmo tamanho do mapa, mostrando, onde pode ser mostrado o mapa real
 var revelado [][]bool
 // Defini o quanto de espaço em volta que ele vai abrir de visibilidade
@@ -100,7 +108,21 @@ var gameOver bool = false
 // Para o usuário não poder mais mover depois de ganhar
 var victory bool = false
 
+
+func resetGame() {
+    gameOver = false
+    victory = false
+    raioVisao = 3
+    revelado = nil
+    statusMsg = ""
+    efeitoNeblina = false
+    ultimoElementoSobPersonagem = vazio
+    posX, posY = 0, 0
+    mapa = nil
+}
+
 func main() {
+    resetGame()
     err := termbox.Init()
     if err != nil {
         panic(err)
@@ -118,31 +140,35 @@ func main() {
     // fica em looping procurando por comandos no teclado
     for {
         // Caso seja game over
-        if gameOver {
-            showGameOver()
-        } else if victory{ // Caso o jogador tenha ganhado.
-
-        } 
-        
-        switch ev := termbox.PollEvent(); ev.Type {
-        case termbox.EventKey:
-            // Verifica se a tecla chamada é para interromper o programa
-            if ev.Key == termbox.KeyEsc {
-                return // Sair do programa
-            }
-            
-            if ev.Ch == 'e' { // caso não seja como ele vai operar.
-                interagir()
-            } else {
-                mover(ev.Ch)
-                // Após se mover, verifica se o efeito de neblina está ativo,
-                // caso esteja manda revelar mais espaços descobertos
-                if efeitoNeblina {
-                    revelarArea()
+        if gameOver || victory {
+            showEndGame()
+            switch ev := termbox.PollEvent(); ev.Type {
+            case termbox.EventKey:
+                if ev.Ch == 'r' {
+                    main()
                 }
             }
-            // Para cada comando de tecla, após processar o comando, manda recarregar 
-            desenhaTudo()
+        }else {
+            switch ev := termbox.PollEvent(); ev.Type {
+            case termbox.EventKey:
+                // Verifica se a tecla chamada é para interromper o programa
+                if ev.Key == termbox.KeyEsc {
+                    return // Sair do programa
+                }
+                
+                if ev.Ch == 'e' { // caso não seja como ele vai operar.
+                    interagir()
+                } else {
+                    mover(ev.Ch)
+                    // Após se mover, verifica se o efeito de neblina está ativo,
+                    // caso esteja manda revelar mais espaços descobertos
+                    if efeitoNeblina {
+                        revelarArea()
+                    }
+                }
+                // Para cada comando de tecla, após processar o comando, manda recarregar 
+                desenhaTudo()
+            }
         }
     }
 }
@@ -178,6 +204,8 @@ func carregarMapa(nomeArquivo string) {
                 elementoAtual = boneco
             case clockDor.simbolo:
                 elementoAtual = clockDor
+            case jackPot.simbolo:
+                elementoAtual = jackPot
             case personagem.simbolo:
                 // Atualiza a posição inicial do personagem
                 posX, posY = x, y
@@ -219,15 +247,22 @@ func desenhaTudo() {
     termbox.Flush()
 }
 
-func showGameOver() {
+func showEndGame() {
     termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-
-    msg := "Game Over, mais sorte da proxima vez...."
-    for i, c := range msg {
-        termbox.SetCell(i, 1, c, termbox.ColorBlack, termbox.ColorDefault)
+    if gameOver {
+        msg := "Game Over, mais sorte da proxima vez...."
+        for i, c := range msg {
+            termbox.SetCell(i, 1, c, termbox.ColorBlack, termbox.ColorDefault)
+        }
+    } else if victory {
+        msg := "🥳 Parabéns!!!! Você chegou até o fim, que tal irmos mais uma vez tente bater o seu tempo."
+        for i, c := range msg {
+            termbox.SetCell(i, 1, c, termbox.ColorBlack, termbox.ColorDefault)
+        }
     }
+    
 
-    msg = "User ESC para sair."
+    msg := "User ESC para sair Ou clique no R para reiniciar a partida... Boa sorte!🫣"
     for i, c := range msg {
         termbox.SetCell(i, 3, c, termbox.ColorBlack, termbox.ColorDefault)
     }
@@ -309,8 +344,11 @@ func mover(comando rune) {
         // salva na variavel momentanea o novo elemento que será retornado quando ele for movido
         ultimoElementoSobPersonagem = mapa[novaPosY][novaPosX] // Atualiza o elemento sob o personagem
         if ultimoElementoSobPersonagem == boneco {
-            showGameOver()
             gameOver = true
+            showEndGame()
+        } else if ultimoElementoSobPersonagem == jackPot {
+            victory = true
+            showEndGame()
         }
         // atualiza a posição nova do personagem
         posX, posY = novaPosX, novaPosY // Move o personagem
