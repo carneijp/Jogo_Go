@@ -15,11 +15,13 @@ type Elemento struct {
     cor termbox.Attribute
     corFundo termbox.Attribute
     tangivel bool
+    posX int
+    posY int
 }
 
 // Personagem controlado pelo jogador
 var personagem = Elemento{
-    simbolo: '☺',
+    simbolo: '🏃',
     cor: termbox.ColorRed,
     corFundo: termbox.ColorDefault,
     tangivel: true,
@@ -71,6 +73,8 @@ var boneco = Elemento{
     cor: termbox.ColorRed,
     corFundo: termbox.ColorDefault,
     tangivel: false,
+    posX: 0,
+    posY: 0,
 }
 
 var clockDor = Elemento{
@@ -126,6 +130,7 @@ var timeStart = time.Now()
 
 
 func resetGame() {
+    timeStart = time.Now()
     killCount = 0
     gameOver = false
     victory = false
@@ -155,11 +160,12 @@ func main() {
     desenhaTudo()
     
     // aqui agora poderia iniciar o cronometro e mandar ele ficar atualizando o mostra tudo colocando um texto indicando tempo passado
+    go timeMonitor()
 
     // fica em looping procurando por comandos no teclado
     for {
         // Caso seja game over
-        if gameOver || victory {
+        if (gameOver || victory) {
             showEndGame()
             switch ev := termbox.PollEvent(); ev.Type {
             case termbox.EventKey:
@@ -218,16 +224,28 @@ func carregarMapa(nomeArquivo string) {
             switch char {
             case parede.simbolo:
                 elementoAtual = parede
+                elementoAtual.posX = x
+                elementoAtual.posY = y
             case barreira.simbolo:
                 elementoAtual = barreira
+                elementoAtual.posX = x
+                elementoAtual.posY = y
             case vegetacao.simbolo:
                 elementoAtual = vegetacao
+                elementoAtual.posX = x
+                elementoAtual.posY = y
             case boneco.simbolo:
                 elementoAtual = boneco
+                elementoAtual.posX = x
+                elementoAtual.posY = y
             case clockDor.simbolo:
                 elementoAtual = clockDor
+                elementoAtual.posX = x
+                elementoAtual.posY = y
             case jackPot.simbolo:
                 elementoAtual = jackPot
+                elementoAtual.posX = x
+                elementoAtual.posY = y
             case personagem.simbolo:
                 // Atualiza a posição inicial do personagem
                 posX, posY = x, y
@@ -308,8 +326,9 @@ func desenhaBarraDeStatus() {
         termbox.SetCell(i, len(mapa)+3, c, termbox.ColorBlack, termbox.ColorDefault)
     }
 
-    gameInfo := fmt.Sprintf("Contagem de kills: %d", killCount)
+    timeElapsed := time.Since(timeStart)
 
+    gameInfo := fmt.Sprintf("Contagem de kills: %d timeElapsed: %t", killCount, timeElapsed)
     for i, c:= range gameInfo {
         termbox.SetCell(i, len(mapa)+5, c, termbox.ColorBlack, termbox.ColorDefault)
     }
@@ -318,6 +337,14 @@ func desenhaBarraDeStatus() {
         termbox.SetCell(i, len(mapa)+6, c, termbox.ColorBlack, termbox.ColorDefault)
     }
     
+}
+
+func timeMonitor() {
+    if !(gameOver || victory) {
+        desenhaTudo()
+        time.Sleep(200 * time.Millisecond)
+        timeMonitor()
+    }
 }
 
 // Função para revelar o mapa, a principio não utilizado
@@ -404,11 +431,12 @@ var fire = Elemento{
     tangivel: false,
 }
 
+// Para o boneco disparar fogo, o boneco lança fogo somente para a direita
 func atirandoFoguinho(x int, y int, inserido bool) {
     proxPosX, proxPosY := x, y+1
     proximoElementoLocal := mapa[proxPosX][proxPosY]
     debusMsg = fmt.Sprintf("Fogo Anda para: (%d, %d)", proxPosX, proxPosY)
-    if proximoElementoLocal == vazio {
+    if proximoElementoLocal.simbolo == vazio.simbolo {
         if inserido {
             mapa[x][y] = vazio
         }
@@ -416,7 +444,7 @@ func atirandoFoguinho(x int, y int, inserido bool) {
         desenhaTudo()
         time.Sleep(200 * time.Millisecond)
         atirandoFoguinho(proxPosX, proxPosY, true)
-    } else if proximoElementoLocal == boneco{
+    } else if proximoElementoLocal.simbolo == boneco.simbolo {
         if inserido {
             mapa[x][y] = vazio
         }
@@ -430,5 +458,19 @@ func atirandoFoguinho(x int, y int, inserido bool) {
             mapa[x][y] = vazio
         }
         desenhaTudo()
+    }
+}
+
+// Para o boneco se movimentar para cima e para baixo recebe o boneco como argumento
+func bonecoUpAndDown(boneco Elemento) {
+    time.Sleep(1 * time.Second)
+    proxPosX, proxPosY := boneco.posX + 1 , boneco.posY
+    proximoElementoLocal := mapa[proxPosX][proxPosY]
+    if proximoElementoLocal.simbolo == vazio.simbolo {
+
+    } else if proximoElementoLocal.simbolo == personagem.simbolo {
+
+    } else {
+
     }
 }
