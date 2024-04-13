@@ -5,6 +5,8 @@ import (
     "github.com/nsf/termbox-go"
     "os"
     "fmt"
+    "time"
+    "sync"
 )
 
 // Define os elementos do jogo
@@ -94,6 +96,9 @@ var ultimoElementoSobPersonagem = vazio
 // Mensagem a ser mostrada na tela
 var statusMsg string
 
+// Para debug da posição do boneco
+var debusMsg string
+
 // Define se vai aparecer a neblina
 var efeitoNeblina = false
 
@@ -108,8 +113,20 @@ var gameOver bool = false
 // Para o usuário não poder mais mover depois de ganhar
 var victory bool = false
 
+//  Variavel para controle de acesso a zona critica
+var mu sync.Mutex
+
+// Contagem de bonecos matados
+var killCount int = 0
+
+// // timer
+var timeStart = time.Now()
+
+// timeElapsed := 0,0
+
 
 func resetGame() {
+    killCount = 0
     gameOver = false
     victory = false
     raioVisao = 3
@@ -137,6 +154,8 @@ func main() {
     // Manda recarregar a 'tela'
     desenhaTudo()
     
+    // aqui agora poderia iniciar o cronometro e mandar ele ficar atualizando o mostra tudo colocando um texto indicando tempo passado
+
     // fica em looping procurando por comandos no teclado
     for {
         // Caso seja game over
@@ -144,6 +163,9 @@ func main() {
             showEndGame()
             switch ev := termbox.PollEvent(); ev.Type {
             case termbox.EventKey:
+                if ev.Key == termbox.KeyEsc {
+                    return // sair do programa
+                }
                 if ev.Ch == 'r' {
                     main()
                 }
@@ -226,6 +248,7 @@ func carregarMapa(nomeArquivo string) {
 
 // Funçao que manda reconstruir a tela com seu novo estado
 func desenhaTudo() {
+    mu.Lock()
     // Manda limpar a tela antes de reconstruir a nova
     termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
     // passa por cada linha do mapa
@@ -245,6 +268,7 @@ func desenhaTudo() {
     desenhaBarraDeStatus()
     // manda resetar o terminal com as novas informações construidas
     termbox.Flush()
+    mu.Unlock()
 }
 
 func showEndGame() {
@@ -282,6 +306,16 @@ func desenhaBarraDeStatus() {
     msg := "Use WASD para mover e E para interagir. ESC para sair."
     for i, c := range msg {
         termbox.SetCell(i, len(mapa)+3, c, termbox.ColorBlack, termbox.ColorDefault)
+    }
+
+    gameInfo := fmt.Sprintf("Contagem de kills: %d", killCount)
+
+    for i, c:= range gameInfo {
+        termbox.SetCell(i, len(mapa)+5, c, termbox.ColorBlack, termbox.ColorDefault)
+    }
+
+    for i, c := range debusMsg {
+        termbox.SetCell(i, len(mapa)+6, c, termbox.ColorBlack, termbox.ColorDefault)
     }
     
 }
@@ -358,5 +392,43 @@ func mover(comando rune) {
 
 // Função de interagir do personagem.
 func interagir() {
-    statusMsg = fmt.Sprintf("Interagindo em (%d, %d)", posX, posY)   
+    statusMsg = fmt.Sprintf("Interagindo em x, y: (%d, %d)", posX, posY)
+    go atirandoFoguinho(posY, posX, false)
+}
+
+// Primeiro desparo de thread quando ele interage ele dispara fogo
+var fire = Elemento{
+    simbolo:'🔥',
+    cor: termbox.ColorYellow,
+    corFundo: termbox.ColorDefault,
+    tangivel: false,
+}
+
+func atirandoFoguinho(x int, y int, inserido bool) {
+    proxPosX, proxPosY := x, y+1
+    proximoElementoLocal := mapa[proxPosX][proxPosY]
+    debusMsg = fmt.Sprintf("Fogo Anda para: (%d, %d)", proxPosX, proxPosY)
+    if proximoElementoLocal == vazio {
+        if inserido {
+            mapa[x][y] = vazio
+        }
+        mapa[proxPosX][proxPosY] = fire
+        desenhaTudo()
+        time.Sleep(200 * time.Millisecond)
+        atirandoFoguinho(proxPosX, proxPosY, true)
+    } else if proximoElementoLocal == boneco{
+        if inserido {
+            mapa[x][y] = vazio
+        }
+        mapa[proxPosX][proxPosY] = vazio
+        mu.Lock()
+        killCount++
+        mu.Unlock()
+        desenhaTudo()
+    } else {
+        if inserido {
+            mapa[x][y] = vazio
+        }
+        desenhaTudo()
+    }
 }
