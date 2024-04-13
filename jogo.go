@@ -17,6 +17,7 @@ type Elemento struct {
     tangivel bool
     posX int
     posY int
+    alive bool
 }
 
 // Personagem controlado pelo jogador
@@ -75,6 +76,7 @@ var boneco = Elemento{
     tangivel: false,
     posX: 0,
     posY: 0,
+    alive: true,
 }
 
 var clockDor = Elemento{
@@ -91,8 +93,11 @@ var jackPot = Elemento{
     tangivel: false,
 }
 
+
+
 // Mapaa parece ser a variavel que representa uma matriz de elementos
 var mapa [][]Elemento
+
 // Entender o que esses posX, posY fazem
 var posX, posY int
 // Guarda o elemento onde o personagem estava antes
@@ -217,35 +222,37 @@ func carregarMapa(nomeArquivo string) {
         linhaTexto := scanner.Text()
         var linhaElementos []Elemento
         var linhaRevelada []bool
+        x := 0
         // aqui passa em cada caracter da linha e adicona na sublinha
-        for x, char := range linhaTexto {
+        for _, char := range linhaTexto {
             elementoAtual := vazio
             // Quando for adicionar novos elementos precisa adicionar aqui no switch
             switch char {
             case parede.simbolo:
                 elementoAtual = parede
-                elementoAtual.posX = x
-                elementoAtual.posY = y
+                elementoAtual.posX = y
+                elementoAtual.posY = x
             case barreira.simbolo:
                 elementoAtual = barreira
-                elementoAtual.posX = x
-                elementoAtual.posY = y
+                elementoAtual.posX = y
+                elementoAtual.posY = x
             case vegetacao.simbolo:
                 elementoAtual = vegetacao
-                elementoAtual.posX = x
-                elementoAtual.posY = y
+                elementoAtual.posX = y
+                elementoAtual.posY = x
             case boneco.simbolo:
                 elementoAtual = boneco
-                elementoAtual.posX = x
-                elementoAtual.posY = y
+                elementoAtual.posX = y
+                elementoAtual.posY = x
+                go bonecoUpAndDown(elementoAtual, 1)
             case clockDor.simbolo:
                 elementoAtual = clockDor
-                elementoAtual.posX = x
-                elementoAtual.posY = y
+                elementoAtual.posX = y
+                elementoAtual.posY = x
             case jackPot.simbolo:
                 elementoAtual = jackPot
-                elementoAtual.posX = x
-                elementoAtual.posY = y
+                elementoAtual.posX = y
+                elementoAtual.posY = x
             case personagem.simbolo:
                 // Atualiza a posição inicial do personagem
                 posX, posY = x, y
@@ -253,6 +260,7 @@ func carregarMapa(nomeArquivo string) {
             }
             linhaElementos = append(linhaElementos, elementoAtual)
             linhaRevelada = append(linhaRevelada, false)
+            x++
         }
         // Coloca no mapa a nova linha.
         mapa = append(mapa, linhaElementos)
@@ -404,10 +412,10 @@ func mover(comando rune) {
         mapa[posY][posX] = ultimoElementoSobPersonagem // Restaura o elemento anterior
         // salva na variavel momentanea o novo elemento que será retornado quando ele for movido
         ultimoElementoSobPersonagem = mapa[novaPosY][novaPosX] // Atualiza o elemento sob o personagem
-        if ultimoElementoSobPersonagem == boneco {
+        if ultimoElementoSobPersonagem.simbolo == boneco.simbolo {
             gameOver = true
             showEndGame()
-        } else if ultimoElementoSobPersonagem == jackPot {
+        } else if ultimoElementoSobPersonagem.simbolo == jackPot.simbolo {
             victory = true
             showEndGame()
         }
@@ -449,6 +457,7 @@ func atirandoFoguinho(x int, y int, inserido bool) {
             mapa[x][y] = vazio
         }
         mapa[proxPosX][proxPosY] = vazio
+        proximoElementoLocal.alive = false
         mu.Lock()
         killCount++
         mu.Unlock()
@@ -462,15 +471,32 @@ func atirandoFoguinho(x int, y int, inserido bool) {
 }
 
 // Para o boneco se movimentar para cima e para baixo recebe o boneco como argumento
-func bonecoUpAndDown(boneco Elemento) {
+func bonecoUpAndDown(boneco Elemento, direction int) {
+    continuar := true
     time.Sleep(1 * time.Second)
-    proxPosX, proxPosY := boneco.posX + 1 , boneco.posY
+    proxPosX, proxPosY := boneco.posX + direction , boneco.posY
     proximoElementoLocal := mapa[proxPosX][proxPosY]
     if proximoElementoLocal.simbolo == vazio.simbolo {
-
+        // Vou me mover na direção inicial pois tenho espaço vazio a "frente"
+        mapa[proxPosX][proxPosY] = boneco
+        mapa[boneco.posX][boneco.posY] = vazio
+        // Atualizando na memoria a nova posição do boneco
+        boneco.posX = proxPosX
+        boneco.posY = proxPosY
     } else if proximoElementoLocal.simbolo == personagem.simbolo {
-
+        gameOver = true
+        showEndGame()
+    } else if proximoElementoLocal.simbolo == fire.simbolo {
+        mapa[boneco.posX][boneco.posY] = vazio
+        mapa[proxPosX][proxPosY] = vazio
+        continuar = false
+        killCount ++
     } else {
+        direction *= -1
+    }
 
+    if (!(gameOver || victory) && continuar) {
+        desenhaTudo()
+        bonecoUpAndDown(boneco, direction)
     }
 }
