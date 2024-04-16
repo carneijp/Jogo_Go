@@ -12,6 +12,7 @@ import (
 
 // Define os elementos do jogo
 type Elemento struct {
+	id int
 	simbolo  rune
 	cor      termbox.Attribute
 	corFundo termbox.Attribute
@@ -128,8 +129,13 @@ var victory bool = false
 // Variavel para controle de acesso a zona critica
 var mu sync.Mutex
 
+var muCount sync.Mutex
+
 // Contagem de bonecos matados
 var killCount int = 0
+
+// Registra a lista de itens que foram deletados
+var mortos[]int
 
 // // timer
 var timeStart = time.Now()
@@ -218,6 +224,7 @@ func carregarMapa(nomeArquivo string) {
 	defer arquivo.Close()
 	// Faz a leitura do arquivo
 	scanner := bufio.NewScanner(arquivo)
+	id := 0
 	y := 0
 	// Aqui passa em cada linha do arquivo mapa construindo ele na memoria.
 	for scanner.Scan() {
@@ -246,6 +253,7 @@ func carregarMapa(nomeArquivo string) {
 				elementoAtual = boneco
 				elementoAtual.posX = y
 				elementoAtual.posY = x
+				elementoAtual.id = id
 				go bonecoUpAndDown(elementoAtual, 1)
 			case clockDor.simbolo:
 				elementoAtual = clockDor
@@ -263,6 +271,7 @@ func carregarMapa(nomeArquivo string) {
 			linhaElementos = append(linhaElementos, elementoAtual)
 			linhaRevelada = append(linhaRevelada, false)
 			x++
+			id++
 		}
 		// Coloca no mapa a nova linha.
 		mapa = append(mapa, linhaElementos)
@@ -307,7 +316,7 @@ func showEndGame() {
 			termbox.SetCell(i, 1, c, termbox.ColorBlack, termbox.ColorDefault)
 		}
 	} else if victory {
-		msg := "🥳 Parabéns!!!! Você chegou até o fim, que tal irmos mais uma vez tente bater o seu tempo."
+		msg := "🥳 Parabens!!!! Você chegou até o fim, que tal irmos mais uma vez tente bater o seu tempo."
 		for i, c := range msg {
 			termbox.SetCell(i, 1, c, termbox.ColorBlack, termbox.ColorDefault)
 		}
@@ -411,6 +420,7 @@ func mover(comando rune) {
 	novaPosX, novaPosY := posX+dx, posY+dy
 	if novaPosY >= 0 && novaPosY < len(mapa) && novaPosX >= 0 && novaPosX < len(mapa[novaPosY]) &&
 		mapa[novaPosY][novaPosX].tangivel == false {
+		mu.Lock()
 		// Coloca de volta no mapa o elemento em que o personagem esta ocupando o espaço antes
 		mapa[posY][posX] = ultimoElementoSobPersonagem // Restaura o elemento anterior
 		// salva na variavel momentanea o novo elemento que será retornado quando ele for movido
@@ -425,6 +435,7 @@ func mover(comando rune) {
 		// atualiza a posição nova do personagem
 		posX, posY = novaPosX, novaPosY // Move o personagem
 		mapa[posY][posX] = personagem   // Coloca o personagem na nova posição
+		mu.Unlock()
 	}
 }
 
@@ -463,6 +474,7 @@ func atirandoFoguinho(x int, y int, inserido bool) {
 		proximoElementoLocal.alive = false
 		mu.Lock()
 		killCount++
+		mortos = append(mortos, proximoElementoLocal.id)
 		mu.Unlock()
 		desenhaTudo()
 	} else {
@@ -476,7 +488,15 @@ func atirandoFoguinho(x int, y int, inserido bool) {
 // Para o boneco se movimentar para cima e para baixo recebe o boneco como argumento
 func bonecoUpAndDown(boneco Elemento, direction int) {
 	continuar := true
+	morto := false
 	time.Sleep(1 * time.Second)
+	mu.Lock()
+	for _, i := range mortos {
+		if i == boneco.id {
+			morto = true
+			break
+		}
+	}
 	proxPosX, proxPosY := boneco.posX+direction, boneco.posY
 	proximoElementoLocal := mapa[proxPosX][proxPosY]
 	if proximoElementoLocal.simbolo == vazio.simbolo {
@@ -493,13 +513,16 @@ func bonecoUpAndDown(boneco Elemento, direction int) {
 		mapa[boneco.posX][boneco.posY] = vazio
 		mapa[proxPosX][proxPosY] = vazio
 		continuar = false
+		mortos = append(mortos, boneco.id)
 		killCount++
 	} else {
 		direction *= -1
 	}
-
+	mu.Unlock()
 	if !(gameOver || victory) && continuar {
 		desenhaTudo()
-		bonecoUpAndDown(boneco, direction)
+		if !morto {
+			bonecoUpAndDown(boneco, direction)
+		}
 	}
 }
