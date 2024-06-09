@@ -6,7 +6,6 @@ import (
 	"os"
 	"sync"
 	"time"
-
 	"github.com/nsf/termbox-go"
 )
 
@@ -237,36 +236,36 @@ func carregarMapa(nomeArquivo string) {
 			elementoAtual := vazio
 			// Quando for adicionar novos elementos precisa adicionar aqui no switch
 			switch char {
-			case parede.simbolo:
-				elementoAtual = parede
-				elementoAtual.posX = y
-				elementoAtual.posY = x
-			case barreira.simbolo:
-				elementoAtual = barreira
-				elementoAtual.posX = y
-				elementoAtual.posY = x
-			case vegetacao.simbolo:
-				elementoAtual = vegetacao
-				elementoAtual.posX = y
-				elementoAtual.posY = x
-			case boneco.simbolo:
-				elementoAtual = boneco
-				elementoAtual.posX = y
-				elementoAtual.posY = x
-				elementoAtual.id = id
-				go bonecoUpAndDown(elementoAtual, 1)
-			case clockDor.simbolo:
-				elementoAtual = clockDor
-				elementoAtual.posX = y
-				elementoAtual.posY = x
-			case jackPot.simbolo:
-				elementoAtual = jackPot
-				elementoAtual.posX = y
-				elementoAtual.posY = x
-			case personagem.simbolo:
-				// Atualiza a posição inicial do personagem
-				posX, posY = x, y
-				elementoAtual = vazio
+				case parede.simbolo:
+					elementoAtual = parede
+					elementoAtual.posX = y
+					elementoAtual.posY = x
+				case barreira.simbolo:
+					elementoAtual = barreira
+					elementoAtual.posX = y
+					elementoAtual.posY = x
+				case vegetacao.simbolo:
+					elementoAtual = vegetacao
+					elementoAtual.posX = y
+					elementoAtual.posY = x
+				case boneco.simbolo:
+					elementoAtual = boneco
+					elementoAtual.posX = y
+					elementoAtual.posY = x
+					elementoAtual.id = id
+					go bonecoUpAndDown(elementoAtual, 1)
+				case clockDor.simbolo:
+					elementoAtual = clockDor
+					elementoAtual.posX = y
+					elementoAtual.posY = x
+				case jackPot.simbolo:
+					elementoAtual = jackPot
+					elementoAtual.posX = y
+					elementoAtual.posY = x
+				case personagem.simbolo:
+					// Atualiza a posição inicial do personagem
+					posX, posY = x, y
+					elementoAtual = vazio
 			}
 			linhaElementos = append(linhaElementos, elementoAtual)
 			linhaRevelada = append(linhaRevelada, false)
@@ -494,7 +493,8 @@ func bonecoUpAndDown(boneco Elemento, direction int) {
 	for _, i := range mortos {
 		if i == boneco.id {
 			morto = true
-			break
+			mu.Unlock()
+			return
 		}
 	}
 	proxPosX, proxPosY := boneco.posX+direction, boneco.posY
