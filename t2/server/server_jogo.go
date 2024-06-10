@@ -494,6 +494,11 @@ func bonecoUpAndDown(boneco Elemento, direction int, server *Server) {
 		}
 	}
 	proxPosX, proxPosY := boneco.PosX+direction, boneco.PosY
+	if (proxPosX >= len(server.mapa) || proxPosX < 0) {
+		direction *= -1
+		server.mapaMu.Unlock()
+		bonecoUpAndDown(boneco, direction, server)
+	} 
 	proximoElementoLocal := server.mapa[proxPosX][proxPosY]
 	if proximoElementoLocal.Simbolo == vazio.Simbolo {
 		// Vou me mover na direção inicial pois tenho espaço vazio a "frente"
@@ -522,6 +527,8 @@ func bonecoUpAndDown(boneco Elemento, direction int, server *Server) {
 		boneco.PosY = proxPosY
 		// server.deadPlayers = append(server.deadPlayers, proximoElementoLocal.id)
 	} else if proximoElementoLocal.Simbolo == fire.Simbolo {
+		// TODO: AQUI ESTÁ COM PROBLEMA NA CONTAGEM DE KILL QUANDO O BONECO ANDA EM CIMA 
+		// DO FOGO E NÃO O FOGO ANDA EM CIMA DO BONECO. PRECISA SER ARRUMADO
 		server.mapa[boneco.PosX][boneco.PosY] = vazio
 		server.mapa[proxPosX][proxPosY] = vazio
 		continuar = false
@@ -537,11 +544,48 @@ func bonecoUpAndDown(boneco Elemento, direction int, server *Server) {
 
 // Fazer uma função para spawnar um novo boneco em um local aleatorio do mapa que tenha posição de casa vazia
 
+func spawnerDeBoneco(server *Server) {
+	contador := 0
+	randomIntX := 0
+	randomIntY := 0
+	for true {
+		ultimoElemento := boneco
+		var id = uuid.NewString()
+		newBoneco := boneco
+		boneco.Id = id
+		server.mapaMu.Lock()
+		for ultimoElemento != vazio {
+			// Buscando por uma posição aleatoria no mapa para colocar o player novo...
+			minY := 0
+			maxY := len(server.mapa) -1
+			randomIntY = rand.Intn(maxY-minY+1) + minY
+			minX := 0
+			maxX := len(server.mapa[0]) -1
+
+			randomIntX = rand.Intn(maxX-minX+1) + minX
+			ultimoElemento = server.mapa[randomIntY][randomIntX]
+			newBoneco.PosX = randomIntY
+			newBoneco.PosY = randomIntX
+		}
+		server.mapa[randomIntY][randomIntX] = newBoneco
+		server.mapaMu.Unlock()
+		go bonecoUpAndDown(newBoneco, 1, server)
+		
+		time.Sleep(5 * time.Second)
+		contador ++
+		if (contador == 20) {
+			go spawnerDeBoneco(server)
+		}else if (contador == 100) {
+			break
+		}
+	}
+}
+
 func main() {
 	//Inicializar um objeto do tipo dos metodos exportaveis
 	server := new(Server)
 	inicializar("mapa.txt", server)
-
+	go spawnerDeBoneco(server)
 	/*
 		Para que seja possivel acessar os metodos do objeto
 		eh necessario registra-lo utilizando a biblioteca rpc.
