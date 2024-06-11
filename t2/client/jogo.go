@@ -217,7 +217,7 @@ var gameOver bool = false
 var timeStart time.Time
 
 func main() {
-	c, err := rpc.DialHTTP("tcp", "https://fppd.carneijp.uk")
+	c, err := rpc.DialHTTP("tcp", "localhost:2403")
 	if err != nil {
 		log.Fatal("Dialing: ", err)
 	}
@@ -300,7 +300,7 @@ func buscaMapa() {
 	for true {
 		if (gameOver == false) {
 			// TODO: COLOCAR AQUI CHAMADA AO SERVIDOR PARA ELE CARREGAR O MAPA
-			c, err := rpc.DialHTTP("tcp", "https://fppd.carneijp.uk")
+			c, err := rpc.DialHTTP("tcp", "localhost:2403")
 			if err != nil {
 				log.Fatal("Dialing: ", err)
 			}
@@ -402,7 +402,7 @@ func desenhaBarraDeStatus() {
 
 // Função para mover, ele recebe como argumento uma rune, O que é uma rune?
 func mover(comando rune) {
-	c, err := rpc.DialHTTP("tcp", "https://fppd.carneijp.uk")
+	c, err := rpc.DialHTTP("tcp", "localhost:2403")
 	if err != nil {
 		log.Fatal("Dialing: ", err)
 	}
@@ -434,7 +434,7 @@ func mover(comando rune) {
 
 // Função de interagir do personagem.
 func interagir() {
-	c, err := rpc.DialHTTP("tcp", "https://fppd.carneijp.uk")
+	c, err := rpc.DialHTTP("tcp", "localhost:2403")
 	if err != nil {
 		log.Fatal("Dialing: ", err)
 	}
