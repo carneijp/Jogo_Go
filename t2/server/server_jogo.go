@@ -39,6 +39,7 @@ func min(a, b int) int {
 // Define os elementos do jogo
 type Elemento struct {
 	Id string
+	IdOwner string
 	KillCount int
 	Simbolo  rune
 	Cor      termbox.Attribute
@@ -295,6 +296,11 @@ func mover(playerId string, comando rune, server *Server) {
 			server.mapaMu.Lock()
 			if novaPosY >= 0 && novaPosY < len(server.mapa) && novaPosX >= 0 && novaPosX < len(server.mapa[novaPosY]) &&
 				server.mapa[novaPosY][novaPosX].Tangivel == false {
+				if server.mapa[novaPosY][novaPosX].Simbolo == fire.Simbolo {
+					server.mapaMu.Unlock()
+					server.playerMu.Unlock()
+					return
+				}
 				// Coloca de volta no mapa o elemento em que o personagem esta ocupando o espaço antes
 				server.mapa[p.PosY][p.PosX] = p.UltimoElementoSobPersonagem // Restaura o elemento anterior
 				// salva na variavel momentanea o novo elemento que será retornado quando ele for movido
@@ -342,11 +348,11 @@ func atirandoFoguinho(x int, y int, inserido bool, idOwner string, server *Serve
 	proximoElementoLocal := server.mapa[proxPosX][proxPosY]
 	// debusMsg = fmt.Sprintf("Fogo Anda para: (%d, %d)", proxPosX, proxPosY)
 	if proximoElementoLocal.Simbolo == vazio.Simbolo {
-		
 		if inserido {
 			server.mapa[x][y] = vazio
 		}
 		server.mapa[proxPosX][proxPosY] = fire
+		server.mapa[proxPosX][proxPosY].IdOwner = idOwner
 		go atirandoFoguinho(proxPosX, proxPosY, true, idOwner, server)
 	} else if proximoElementoLocal.Simbolo == boneco.Simbolo {
 		if inserido {
@@ -527,7 +533,16 @@ func bonecoUpAndDown(boneco Elemento, direction int, server *Server) {
 		boneco.PosY = proxPosY
 		// server.deadPlayers = append(server.deadPlayers, proximoElementoLocal.id)
 	} else if proximoElementoLocal.Simbolo == fire.Simbolo {
-		// TODO: AQUI ESTÁ COM PROBLEMA NA CONTAGEM DE KILL QUANDO O BONECO ANDA EM CIMA 
+		idOwner := proximoElementoLocal.IdOwner
+		server.playerMu.Lock()
+		for index, p := range server.players {
+			if p.Id == idOwner {
+				p.KillCount++
+				server.players[index] = p
+				break
+			}
+		}
+		server.playerMu.Unlock()
 		// DO FOGO E NÃO O FOGO ANDA EM CIMA DO BONECO. PRECISA SER ARRUMADO
 		server.mapa[boneco.PosX][boneco.PosY] = vazio
 		server.mapa[proxPosX][proxPosY] = vazio

@@ -36,6 +36,7 @@ func min(a, b int) int {
 // Define os elementos do jogo
 type Elemento struct {
 	Id string
+	IdOwner string
 	KillCount int
 	Simbolo  rune
 	Cor      termbox.Attribute
@@ -233,7 +234,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Server error: ", err)
 	} else {
-		fmt.Printf("Horario de inicio do servidor armazendao com sucesso\n")
 		timeStart = reply_time_started_server
 	}
 
@@ -300,7 +300,7 @@ func buscaMapa() {
 	for true {
 		if (gameOver == false) {
 			// TODO: COLOCAR AQUI CHAMADA AO SERVIDOR PARA ELE CARREGAR O MAPA
-			c, err := rpc.DialHTTP("tcp", "localhost:2403")
+			c, err := rpc.DialHTTP("tcp", "https://fppd.carneijp.uk")
 			if err != nil {
 				log.Fatal("Dialing: ", err)
 			}
@@ -319,15 +319,17 @@ func buscaMapa() {
 				ultimoElementoSobPersonagem = reply_map.PlayerInformation.UltimoElementoSobPersonagem
 				if (reply_map.PlayerInformation.Dead) {
 					gameOver = true
+					playerMu.Unlock()
 					showEndGame()
+				} else {
+					playerMu.Unlock()
+					// Atualiza estatisticas do mapa
+					mapaMu.Lock()
+					mapa = reply_map.Mapa
+					mapaMu.Unlock()
+					desenhaTudo()
 				}
-				playerMu.Unlock()
-				// Atualiza estatisticas do mapa
-				mapaMu.Lock()
-				mapa = reply_map.Mapa
-				mapaMu.Unlock()
 			}
-			desenhaTudo()
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
@@ -418,13 +420,15 @@ func mover(comando rune) {
 		ultimoElementoSobPersonagem = reply_map.PlayerInformation.UltimoElementoSobPersonagem
 		if (reply_map.PlayerInformation.Dead) {
 			gameOver = true
+			playerMu.Unlock()
 			showEndGame()
+		} else {
+			playerMu.Unlock()
+			mapaMu.Lock()
+			mapa = reply_map.Mapa
+			mapaMu.Unlock()
+			desenhaTudo()
 		}
-		playerMu.Unlock()
-		mapaMu.Lock()
-		mapa = reply_map.Mapa
-		mapaMu.Unlock()
-		desenhaTudo()
 	}
 }
 
@@ -448,13 +452,15 @@ func interagir() {
 		ultimoElementoSobPersonagem = reply_map.PlayerInformation.UltimoElementoSobPersonagem
 		if (reply_map.PlayerInformation.Dead) {
 			gameOver = true
+			playerMu.Unlock()
 			showEndGame()
+		} else {
+			statusMsg = fmt.Sprintf("Interagindo em x, y: (%d, %d)", posX, posY)
+			playerMu.Unlock()
+			mapaMu.Lock()
+			mapa = reply_map.Mapa
+			mapaMu.Unlock()
+			desenhaTudo()
 		}
-		statusMsg = fmt.Sprintf("Interagindo em x, y: (%d, %d)", posX, posY)
-		playerMu.Unlock()
-		mapaMu.Lock()
-		mapa = reply_map.Mapa
-		mapaMu.Unlock()
-		desenhaTudo()
 	}
 }
