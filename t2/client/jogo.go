@@ -216,8 +216,11 @@ var gameOver bool = false
 // // timer
 var timeStart time.Time
 
+var ip string 
+
 func main() {
-	c, err := rpc.DialHTTP("tcp", "localhost:2403")
+	ip = "18.224.214.104:2403"
+	c, err := rpc.DialHTTP("tcp", ip)
 	if err != nil {
 		log.Fatal("Dialing: ", err)
 	}
@@ -300,7 +303,7 @@ func buscaMapa() {
 	for true {
 		if (gameOver == false) {
 			// TODO: COLOCAR AQUI CHAMADA AO SERVIDOR PARA ELE CARREGAR O MAPA
-			c, err := rpc.DialHTTP("tcp", "localhost:2403")
+			c, err := rpc.DialHTTP("tcp", ip)
 			if err != nil {
 				log.Fatal("Dialing: ", err)
 			}
@@ -402,7 +405,7 @@ func desenhaBarraDeStatus() {
 
 // Função para mover, ele recebe como argumento uma rune, O que é uma rune?
 func mover(comando rune) {
-	c, err := rpc.DialHTTP("tcp", "localhost:2403")
+	c, err := rpc.DialHTTP("tcp", ip)
 	if err != nil {
 		log.Fatal("Dialing: ", err)
 	}
@@ -434,7 +437,7 @@ func mover(comando rune) {
 
 // Função de interagir do personagem.
 func interagir() {
-	c, err := rpc.DialHTTP("tcp", "localhost:2403")
+	c, err := rpc.DialHTTP("tcp", ip)
 	if err != nil {
 		log.Fatal("Dialing: ", err)
 	}
